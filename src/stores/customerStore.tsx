@@ -20,23 +20,31 @@ interface Pagination {
   from: number;
   last_page: number;
   per_page: number;
-  prev_page_url: string | null;
+  prev_page_url: null;
   to: number;
   total: number;
 }
 
 interface CustomerStore {
+  customer: Customer;
   customers: Customer[];
-  fetchCustomers: (currentPage: number, perPage: number) => Promise<void>;
   error: any;
   loading: boolean;
   pagination: Pagination;
-  setItemsPerPage: (perPage: number) => Promise<void>;
+  setLoading: (loading: boolean) => void;
+  setCustomers: (customers: Customer[]) => void; // Tambahkan parameter pagination
+  setCustomer: (customer: Customer) => void;
+  setPerPage: (per_page: number) => Promise<void>;
   setPage: (page: number) => void;
+  setPagination: (page: number) => void;
+  handleEdit: (customerId: string) => void;
+  setSelectedCustomer: (customer: Customer | null) => void;
+  fetchCustomerById: (customer: Customer) => void;
 }
 
 const customerStore = create<CustomerStore>((set) => ({
   customers: [],
+  customer: null,
   loading: false,
   error: null,
   pagination: {
@@ -49,47 +57,56 @@ const customerStore = create<CustomerStore>((set) => ({
     total: 0,
   },
 
-  fetchCustomers: async () => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get('http://localhost:8000/api/customers', {
-        params: {
-        },
-      });
-
-      set({
-        customers: response.data.data.data,
-        pagination: {
-          current_page: response.data.data.current_page,
-          from: response.data.data.from,
-          last_page: response.data.data.last_page,
-          per_page: response.data.data.per_page,
-          prev_page_url: response.data.data.prev,
-          to: response.data.data.to,
-          total: response.data.data.total,
-        },
-        loading: false,
-      });
-    } catch (err) {
-      set({ error: err.message, loading: false });
-    }
+  setCustomers: (customers: Customer[]) => {
+    set({ customers }); // Set only customers
   },
 
-  setItemsPerPage: async (perPage: number) => {
+  setCustomer: (customer) => {
+    set({ customer });
+  },
+
+
+
+  setPagination: (pagination: Pagination) => {
+    set({ pagination }); // Set only pagination
+  },
+
+  setLoading: (loading: boolean) => {
+    set({ loading });
+  },
+
+  setPerPage: (per_page: number) => {
     set((state) => ({
       pagination: {
         ...state.pagination,
-        per_page: perPage,
+        per_page: per_page,
+        current_page: 1,
       },
     }));
-    await customerStore.getState().fetchCustomers(1, perPage);
+  },
+  
+  setPage: (page: number) => {
+    set((state) => {
+      if (page < 1 || page > state.pagination.last_page) return state; // Validasi halaman
+      return {
+        pagination: {
+          ...state.pagination,
+          current_page: page,
+        },
+      };
+    });
   },
 
-  setPage: (page: number) => {
-    const { pagination } = customerStore.getState();
-    if (page < 1 || page > pagination.last_page) return;
-    customerStore.getState().fetchCustomers(page, pagination.per_page);
+  handleEdit: (customerId: string) => {
+    window.location.href = `/customers/${customerId}/edit/`;
   },
+
+  setSelectedCustomer: (customer: Customer | null) => {
+    set({ selectedCustomer: customer }); // Set customer yang dipilih
+  },
+
+
+
 }));
 
 export default customerStore;

@@ -1,5 +1,7 @@
 // CustomerList.js
 import { Header } from '@/components/layout/header';
+import axios from 'axios';
+
 import { Main } from '@/components/layout/main';
 import { ProfileDropdown } from '@/components/profile-dropdown';
 import { Search } from '@/components/search';
@@ -50,21 +52,37 @@ export type ProductContent = {
 };
 
 export default function CustomerList() {
-  const { customers, loading, error, pagination, fetchCustomers, setItemsPerPage, setPage } = useCustomerStore();
+  const { customers, loading,handleEdit, setCustomers,setLoading, setPagination, error, pagination, setPerPage, setPage } = useCustomerStore();
+  
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`http://localhost:8000/api/customers?page=${pagination.current_page}&per_page=${pagination.per_page}`);
+      setCustomers(response.data.data.data); // Set customers
+      setPagination({
+        current_page: response.data.data.current_page,
+        from: response.data.data.from,
+        last_page: response.data.data.last_page,
+        per_page: response.data.data.per_page,
+        prev_page_url: response.data.data.prev_page_url,
+        to: response.data.data.to,
+        total: response.data.data.total,
+      }); // Set pagination
+      setLoading(false);
+
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+    } finally {
+      setLoading(false); // Set loading to false after fetching
+    }
+  };
 
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [pagination.current_page, pagination.per_page]);
+  
 
-  const handleItemsPerPageChange = (newPerPage: number) => {
-    setItemsPerPage(newPerPage);
-  };
-
-  const handlePageChange = (page: number) => {
-    setPage(page);
-  };
-
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>Loading ...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
@@ -81,7 +99,7 @@ export default function CustomerList() {
         <div className='w-full mb-2 flex flex-wrap items-center justify-between space-y-2'>
           <h3 className='w-full text-2xl text-center font-bold tracking-tight'>Customer List</h3>
           <div className="w-full flex justify-between items-center p-4 border-t">
-            <button className="bg-blue-800 text-white m-1 p-1 radius-sm">Create</button>
+            <a href="customers/create" className="bg-blue-800 text-white m-1 p-1 radius-sm">Create</a>
             <Dialog>
               <DialogTrigger className="bg-blue-800 text-white m-1 p-1 radius-sm">Filter</DialogTrigger>
               <DialogContent>
@@ -135,6 +153,7 @@ export default function CustomerList() {
             <TableHeader className="bg-blue-800">
               <TableRow>
                 <TableHead className="text-center text-white w-[100px] border-b border-r border-gray-300"></TableHead>
+                <TableHead className="text-center text-white w-[100px] border-b border-r border-gray-300">No</TableHead>
                 <TableHead className="text-center text-white w-[100px] border-b border-r border-gray-300">ID</TableHead>
                 <TableHead className="text-center text-white border-b border-r border-gray-300">First Name</TableHead>
                 <TableHead className="text-center text-white border-b border-r border-gray-300">Last Name</TableHead>
@@ -148,17 +167,18 @@ export default function CustomerList() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {customers.map((customer) => (
+              {customers.map((customer,index) => (
                 <TableRow key={customer.id} className="border-b border-gray-200 text-center">
                   <TableCell className="text-center border-r border-gray-300">
                     <DropdownMenu>
                       <DropdownMenuTrigger className="">...</DropdownMenuTrigger>
                       <DropdownMenuContent className="text-center">
-                        <button>Edit</button>
+                        <button onClick={() => handleEdit(customer.id)}>Edit</button>
                         <button>Show</button>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
+                  <TableCell className="text-center border-r border-gray-300">{(pagination.from + index)}</TableCell>
                   <TableCell className="text-center border-r border-gray-300">{customer.id}</TableCell>
                   <TableCell className="text-center border-r border-gray-300">{customer.first_name}</TableCell>
                   <TableCell className="text-center border-r border-gray-300">{customer.last_name}</TableCell>
@@ -182,7 +202,7 @@ export default function CustomerList() {
           </div>
 
           <div className="text-sm">
-            <select onChange={(e) => handleItemsPerPageChange(Number(e.target.value))} value={pagination.per_page}>
+            <select onChange={(e) => setPerPage(Number(e.target.value))} value={pagination.per_page}>
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
@@ -194,16 +214,16 @@ export default function CustomerList() {
 
           {/* Bagian Kanan: Tombol Navigasi */}
           <div className="flex space-x-2">
-            <button onClick={() => handlePageChange(1)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => setPage(1)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               First
             </button>
-            <button onClick={() => handlePageChange(pagination.current_page - 1)} disabled={pagination.current_page === 1} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => setPage(pagination.current_page - 1)} disabled={pagination.current_page === 1} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               Previous
             </button>
-            <button onClick={() => handlePageChange(pagination.current_page + 1)} disabled={pagination.current_page === pagination.last_page} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => setPage(pagination.current_page + 1)} disabled={pagination.current_page === pagination.last_page} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               Next
             </button>
-            <button onClick={() => handlePageChange(pagination.last_page)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => setPage(pagination.last_page)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               Last
             </button>
           </div>
