@@ -35,18 +35,14 @@ const CustomerCreate = () => {
 
     try {
         // Mengirim permintaan POST menggunakan Fetch API
-        const response = await axios.post(`http://127.0.0.1:8000/api/customers/store`, {
+        const response = await axios.post(`http://127.0.0.1:8000/api/customers`, {
             first_name: customer.first_name,
             last_name: customer.last_name,
-            phone: customer.phone,
-            email: customer.email, // Include email
-            is_activated: customer.is_activated, // Include is_activated
         }, {
             headers: {
                 "Content-Type": "application/json",
             }
         });
-
         alert('Customer created successfully');
     } catch (error) {
         alert('Error creating customer: ' + error.message);

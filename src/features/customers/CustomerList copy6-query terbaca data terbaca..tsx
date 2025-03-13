@@ -52,18 +52,11 @@ export type ProductContent = {
 };
 
 export default function CustomerList() {
-  const { customers, loading,handleEdit, fetchAdvanceSearch, setCustomers,setLoading, setPagination, error, pagination, setPerPage, setPage } = useCustomerStore();
-  const [filter, setFilter] = useState('');
-  const [searchCustomer, setSearchCustomer] = useState('');
-  const [firstNameFilter, setFirstNameFilter] = useState('');
-  const [lastNameFilter, setLastNameFilter] = useState('');
-  
-
+  const { customers, loading,handleEdit, setCustomers,setLoading, setPagination, error, pagination, setPerPage, setPage } = useCustomerStore();
+  const [searchCustomerLastName, setSearchCustomerLastName] = useState('');
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      // const response = await axios.get(`http://localhost:8000/api/customers?page=${pagination.current_page}&from=${pagination.from}&per_page=&last_page=${pagination.last_page}${pagination.per_page}&prev_page_url=${pagination.prev_page_url}&to=${pagination.to}&total=${pagination.total}`);
-
       const response = await axios.get(`http://localhost:8000/api/customers?page=${pagination.current_page}&per_page=${pagination.per_page}`);
       setCustomers(response.data.data.data); // Set customers
       setPagination({
@@ -85,46 +78,6 @@ export default function CustomerList() {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const filteredCustomers = filterCustomers(customers, filterValues);
-    console.log(filteredCustomers);
-    
-    // Memperbaiki penamaan parameter
-    const currentPage = params.get('current_page'); 
-    const from = params.get('from');
-    const last_page = params.get('last_page'); // Perbaiki penamaan dari 'last_page' ke 'last-page'
-    const per_page = params.get('per_page'); // Perbaiki penamaan dari 'per_page' ke 'per-page'
-    const prev_page_url = params.get('prev_page_url'); // Perbaiki penamaan dari 'prev_page_url' ke 'prev-page-url'
-    const to = params.get('to');
-    const total = params.get('total');
-
-    // Mengupdate state berdasarkan query parameters
-
-    // if (currentPage) setPagination((prev:any) => ({ ...prev, current_page: Number(currentPage) }));
-    // if (from) setPagination((prev:any) => ({ ...prev, from: Number(from) }));
-    // if (last_page) setPagination((prev:any) => ({ ...prev, last_page: Number(lastPage) }));
-    // if (per_page) setPagination((prev:any) => ({ ...prev, per_page: Number(perPage) }));
-    // if (prev_page_url) setPagination((prev:any) => ({ ...prev, prev_page_url: prevPageUrl }));
-    // if (to) setPagination((prev:any) => ({ ...prev, to: Number(to) }));
-    // if (total) setPagination((prev:any) => ({ ...prev, total: Number(total) }));
-
-    params.set('current_page', pagination.per_page);
-    params.set('from', pagination.from);
-    params.set('last_page', pagination.last_page);
-    params.set('per_page', pagination.per_page);
-    params.set('prev_page_url', pagination.prev_page_url);
-    params.set('to', pagination.to);
-    params.set('total', pagination.total);
-
-
-    // if (currentPage) setPage(Number(currentPage));
-    // if (from) setPagination(Number(from));
-    // if (last_page) setPagination(Number(last_page));
-    // if (per_page) setPagination(Number(per_page));
-    // if (prev_page_url) setPagination(Number(prev_page_url));
-    // if (to) setPagination(Number(to));
-    // if (total) setPagination(Number(total));
-
     fetchCustomers();
   }, [pagination.current_page, pagination.per_page]);
   
@@ -185,7 +138,33 @@ export default function CustomerList() {
   const applyFilters = () => {
     const filteredCustomers = filterCustomers(customers, filterValues);
 
+    const params = new URLSearchParams();
+
+    const filtered = customers.filter(customer =>
+      customer.first_name.toLowerCase().includes(searchCustomer.toLowerCase())
+    );
+
+    setFilteredCustomers(filtered);
+
+    params.set('first-name', searchFirCustomer);
+ 
+    params.set('to', filteredCustomers.length);
+    params.set('total', filteredCustomers.length);
+
+    // params.set('first-name', filteredCustomers[0].first_name);
+    // params.set('last-name', filteredCustomers[0].last_name);
+    // params.set('phone', filteredCustomers[0].phone);
+    // params.set('email', filteredCustomers[0].email);
+    // params.set('is_activated', filteredCustomers[0].is_activated);
+    // params.set('created_at', filteredCustomers[0].created_at);
+    // params.set('updated_at', filteredCustomers[0].updated_at);
+
+
+    // Memperbarui URL tanpa memuat ulang halaman
+    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+
     setCustomers(filteredCustomers);
+
     setPagination({
       ...pagination,
       current_page: 1,
@@ -194,39 +173,9 @@ export default function CustomerList() {
       total: filteredCustomers.length,
     });
 
-    const params = new URLSearchParams();
-
-    if (firstNameFilter) {
-        params.set('first-name', firstNameFilter);
-    }
-    if (lastNameFilter) {
-        params.set('last-name', lastNameFilter);
-    }
-     // Memperbarui URL tanpa memuat ulang halaman
-     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
-
-     fetchAdvanceSearch(firstNameFilter, lastNameFilter);
-
   };
 
-  const handleSetPerPage = (value) => {
-    console.log('value set page', value)
-    const filteredCustomers = filterCustomers(customers, filterValues);
-    setCustomers(filteredCustomers);
-    setPerPage(value);
-
-    const params = new URLSearchParams();
-    params.set('current_page', pagination.per_page);
-    params.set('from', pagination.from);
-    params.set('last_page', pagination.last_page);
-    params.set('per_page', pagination.per_page);
-    params.set('prev_page_url', pagination.prev_page_url);
-    params.set('to', pagination.to);
-    params.set('total', pagination.total);
-
-    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
-  };
-
+  const filteredCustomers = filterCustomers(customers, filterValues);
 
   const clearFilters = () => {
     setFilterValues({
@@ -283,8 +232,8 @@ export default function CustomerList() {
                         <span>First Name </span>
                         <Input
                           name="first_name"
-                          value={firstNameFilter}
-                          onChange={(e) => setFirstNameFilter(e.target.value)}
+                          value={filterValues.first_name}
+                          onChange={handleInputChange}
                           placeholder="Filter First Name..."
                           className="max-w-sm text-xs"
                         />
@@ -293,8 +242,8 @@ export default function CustomerList() {
                         <span>Last Name </span>
                         <Input
                           name="last_name"
-                          value={lastNameFilter}
-                          onChange={(e) => setLastNameFilter(e.target.value)}
+                          value={filterValues.last_name}
+                          onChange={handleInputChange}
                           placeholder="Filter Last Name ..."
                           className="max-w-sm text-xs"
                         />
@@ -439,7 +388,7 @@ export default function CustomerList() {
           </div>
 
           <div className="text-sm">
-            <select onChange={(e) => handleSetPerPage(Number(e.target.value))} value={pagination.per_page}>
+            <select onChange={(e) => setPerPage(Number(e.target.value))} value={pagination.per_page}>
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>

@@ -40,6 +40,22 @@ interface CustomerStore {
   handleEdit: (customerId: string) => void;
   setSelectedCustomer: (customer: Customer | null) => void;
   fetchCustomerById: (customer: Customer) => void;
+  fetchAdvanceSearch: (firstNameFilter: string, lastNameFilter : string) => void;
+  setFilter: (filter: Partial<CustomerStore['filter']>) => void;
+  clearFilter: () => void;
+  filter: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    phone: string;
+    email: string;
+    is_activated: string;
+    created_by: string;
+    updated_by: string;
+    created_at: string;
+    updated_at: string;
+  };
+
 }
 
 const customerStore = create<CustomerStore>((set) => ({
@@ -56,6 +72,19 @@ const customerStore = create<CustomerStore>((set) => ({
     to: 10,
     total: 0,
   },
+  filter: {
+    id: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    is_activated: '',
+    created_by: '',
+    updated_by: '',
+    created_at: '',
+    updated_at: '',
+  },
+  
 
   setCustomers: (customers: Customer[]) => {
     set({ customers }); // Set only customers
@@ -85,13 +114,13 @@ const customerStore = create<CustomerStore>((set) => ({
     }));
   },
   
-  setPage: (page: number) => {
+  setPage: (current_page: number) => {
     set((state) => {
-      if (page < 1 || page > state.pagination.last_page) return state; // Validasi halaman
+      if (current_page < 1 || current_page > state.pagination.last_page) return state; // Validasi halaman
       return {
         pagination: {
           ...state.pagination,
-          current_page: page,
+          current_page: current_page,
         },
       };
     });
@@ -104,6 +133,48 @@ const customerStore = create<CustomerStore>((set) => ({
   setSelectedCustomer: (customer: Customer | null) => {
     set({ selectedCustomer: customer }); // Set customer yang dipilih
   },
+
+  setFilter: (filter) => set((state) => ({ filter: { ...state.filter, ...filter } })),
+  
+  clearFilter: () => set({ // Clear filter action
+    filter: {
+      id: '',
+      first_name: '',
+      last_name: '',
+      phone: '',
+      email: '',
+      is_activated: '',
+      created_by: '',
+      updated_by: '',
+      created_at: '',
+      updated_at: '',
+    },
+  }),
+
+
+  fetchAdvanceSearch: async (firstNameFilter, lastNameFilter) => {
+    try {
+
+      const response = await axios.post(`http://127.0.0.1:8000/api/customer-filter`, {
+        first_name: firstNameFilter,
+        last_name: lastNameFilter,
+      }, {
+        headers: {
+          "Content-Type": "application/json",
+        }
+      });
+
+      // const response = await axios.get(`http://localhost:8000/api/customers?`);
+      
+
+      set({ customers: response.data.data.data, loading: false });
+      console.log(response.data.data.data);
+      alert('search');
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
 
 
 
