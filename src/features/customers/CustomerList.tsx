@@ -8,8 +8,10 @@ import { Search } from '@/components/search';
 import { ThemeSwitch } from '@/components/theme-switch';
 import { Input } from "@/components/ui/input";
 import  { useEffect,useState  } from 'react';
-
-
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { ErrorMessage } from "@hookform/error-message"
 import {
   Dialog,
   DialogContent,
@@ -51,12 +53,51 @@ export type ProductContent = {
   is_activated: boolean;
 };
 
+
+// Definisikan skema validasi menggunakan Zod
+const customerSchema = z.object({
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  email: z.string()
+    .optional() // Mengizinkan field ini untuk tidak ada
+    .nullable() // Mengizinkan field ini untuk bernilai null
+    .refine(value => !value || z.string().email().safeParse(value).success, {
+      message: "Invalid email format",
+    }), // Memvalidasi email jika tidak kosong
+  phone: z.string()
+    .regex(/^0[0-9]*$/, "Nomor Handphone hanya boleh angka dan dimulai dari angka 0")
+    .optional() // Mengizinkan field ini untuk tidak ada
+    .nullable() // Mengizinkan field ini untuk bernilai null
+    .or(z.literal('')), // Mengizinkan field ini untuk bernilai string kosong
+  
+  created_by: z.string().optional(),
+
+  updated_by: z.string().optional(),
+
+  is_activated: z.boolean().optional() // Mengizinkan field ini untuk tidak ada
+  .nullable() // Mengizinkan field ini untuk bernilai null
+  .or(z.literal('')), // Mengizinkan field ini untuk bernilai string kosong
+
+  created_at: z.string()
+    .optional()
+    .refine((value) => {
+      // Memeriksa apakah value sesuai dengan format tanggal YYYY-MM-DD
+      return !value || /^\d{4}-\d{2}-\d{2}$/.test(value);
+    }, {
+      message: "Invalid date format. Expected format: YYYY-MM-DD",
+    }),
+  updated_at: z.string().optional(),
+});
+
+type CustomerFormData = z.infer<typeof customerSchema>;
+
 export default function CustomerList() {
-  const { customers, loading,handleEdit, fetchAdvanceSearch, setCustomers,setLoading, setPagination, error, pagination, setPerPage, setPage } = useCustomerStore();
-  const [filter, setFilter] = useState('');
-  const [searchCustomer, setSearchCustomer] = useState('');
-  const [firstNameFilter, setFirstNameFilter] = useState('');
-  const [lastNameFilter, setLastNameFilter] = useState('');
+  const { customers, loading,handleEdit,  setCustomers,setLoading, setPagination, error, pagination, setPerPage, setPage } = useCustomerStore();
+  const [filterParams, setFilterParams] = useState(new URLSearchParams());
+
+  const { register, reset,  formState: { errors }, handleSubmit } = useForm<CustomerFormData>({
+    resolver: zodResolver(customerSchema),
+  });
   
 
   const fetchCustomers = async () => {
@@ -84,139 +125,93 @@ export default function CustomerList() {
     }
   };
 
+  const fetchAdvanceSearch = async (data:any) => {
+    try {
+      
+      const params = {
+          first_name: data.first_name,
+          last_name: data.last_name,
+          phone: data.phone,
+          email: data.email,
+          created_by: data.created_by,
+          updated_by: data.updated_by,
+          is_activated: data.is_activated,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+      };
+
+      const response = await axios.get('http://localhost:8000/api/customer-filter', { params });
+      setCustomers(response.data.data.data); 
+      
+      
+      console.log(response.data.data.data)
+
+
+      setLoading(false);
+
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+    } finally {
+      setLoading(false); // Set loading to false after fetching
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const filteredCustomers = filterCustomers(customers, filterValues);
-    console.log(filteredCustomers);
-    
-    // Memperbaiki penamaan parameter
-    const currentPage = params.get('current_page'); 
-    const from = params.get('from');
-    const last_page = params.get('last_page'); // Perbaiki penamaan dari 'last_page' ke 'last-page'
-    const per_page = params.get('per_page'); // Perbaiki penamaan dari 'per_page' ke 'per-page'
-    const prev_page_url = params.get('prev_page_url'); // Perbaiki penamaan dari 'prev_page_url' ke 'prev-page-url'
-    const to = params.get('to');
-    const total = params.get('total');
-
-    // Mengupdate state berdasarkan query parameters
-
-    // if (currentPage) setPagination((prev:any) => ({ ...prev, current_page: Number(currentPage) }));
-    // if (from) setPagination((prev:any) => ({ ...prev, from: Number(from) }));
-    // if (last_page) setPagination((prev:any) => ({ ...prev, last_page: Number(lastPage) }));
-    // if (per_page) setPagination((prev:any) => ({ ...prev, per_page: Number(perPage) }));
-    // if (prev_page_url) setPagination((prev:any) => ({ ...prev, prev_page_url: prevPageUrl }));
-    // if (to) setPagination((prev:any) => ({ ...prev, to: Number(to) }));
-    // if (total) setPagination((prev:any) => ({ ...prev, total: Number(total) }));
-
-    params.set('current_page', pagination.per_page);
-    params.set('from', pagination.from);
-    params.set('last_page', pagination.last_page);
-    params.set('per_page', pagination.per_page);
-    params.set('prev_page_url', pagination.prev_page_url);
-    params.set('to', pagination.to);
-    params.set('total', pagination.total);
-
-
-    // if (currentPage) setPage(Number(currentPage));
-    // if (from) setPagination(Number(from));
-    // if (last_page) setPagination(Number(last_page));
-    // if (per_page) setPagination(Number(per_page));
-    // if (prev_page_url) setPagination(Number(prev_page_url));
-    // if (to) setPagination(Number(to));
-    // if (total) setPagination(Number(total));
 
     fetchCustomers();
-  }, [pagination.current_page, pagination.per_page]);
+  }, [pagination.current_page, pagination.per_page, pagination.to,filterParams]);
   
 
-  const [filterValues, setFilterValues] = useState({
-    id: '',
-    first_name: '',
-    last_name: '',
-    phone: '',
-    email: '',
-    is_activated: '',
-    created_by: '',
-    updated_by: '',
-    created_at: '',
-    updated_at: '',
-  });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFilterValues((prevValues) => ({
-      ...prevValues,
-      [name]: value,
-    }));
-  };
+  
 
-  const filterCustomers = (customers, filters) => {
-    return customers.filter((customer) => {
-      // String matching for text fields
-      const textFieldsMatch = Object.keys(filters).every((key) => {
-        if (typeof customer[key] === 'string' && typeof filters[key] === 'string' && filters[key]) {
-          return customer[key].toLowerCase().includes(filters[key].toLowerCase());
-        }
-        return true;
-      });
-
-      // Strict equality for boolean fields
-      const booleanFieldsMatch = Object.keys(filters).every((key) => {
-        if (typeof customer[key] === 'boolean' && typeof filters[key] === 'string') {
-          return customer[key] === (filters[key] === 'true');
-        }
-        return true;
-      });
-
-      // Date parsing for date fields
-      const dateFieldsMatch = Object.keys(filters).every((key) => {
-        if (typeof customer[key] === 'string' && key.includes('_at') && filters[key]) {
-          const customerDate = new Date(customer[key]);
-          const filterDate = new Date(filters[key]);
-          return customerDate.toISOString().startsWith(filterDate.toISOString().split('T')[0]);
-        }
-        return true;
-      });
-
-      return textFieldsMatch && booleanFieldsMatch && dateFieldsMatch;
-    });
-  };
-
-  const applyFilters = () => {
-    const filteredCustomers = filterCustomers(customers, filterValues);
-
-    setCustomers(filteredCustomers);
-    setPagination({
-      ...pagination,
-      current_page: 1,
-      from: 1,
-      to: filteredCustomers.length,
-      total: filteredCustomers.length,
-    });
-
+  const onSubmit = (data:any) => {
     const params = new URLSearchParams();
 
-    if (firstNameFilter) {
-        params.set('first-name', firstNameFilter);
+    if (data.first_name) {
+        params.set('first-name', data.first_name);
     }
-    if (lastNameFilter) {
-        params.set('last-name', lastNameFilter);
+    if (data.last_name) {
+        params.set('last-name', data.last_name);
+    }
+    if (data.phone) {
+        params.set('phone', data.phone);
+    }
+    if (data.email) {
+        params.set('email', data.email);
+    }
+    if (data.created_by) {
+        params.set('created-by', data.created_by);
+    }
+    if (data.updated_by) {
+        params.set('updated-by', data.updated_by);
+    }
+    if (data.is_activated) {
+        params.set('is-activated', data.is_activated);
+    }
+    if (data.created_at) {
+        params.set('created-at', data.created_at);
+    }
+    if (data.updated_at) {
+        params.set('updated-at', data.updated_at);
     }
      // Memperbarui URL tanpa memuat ulang halaman
      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
 
-     fetchAdvanceSearch(firstNameFilter, lastNameFilter);
-
+     fetchAdvanceSearch(data);
   };
 
-  const handleSetPerPage = (value) => {
+  const handleSetPage = (value: number) => {
+    setPage(value);
     console.log('value set page', value)
-    const filteredCustomers = filterCustomers(customers, filterValues);
-    setCustomers(filteredCustomers);
-    setPerPage(value);
+    // const filteredCustomers = filterCustomers(customers);
+    // setCustomers(filteredCustomers);
 
     const params = new URLSearchParams();
-    params.set('current_page', pagination.per_page);
+    console.log('handleSetPage params',params);
+
+    params.set('current_page', value);
     params.set('from', pagination.from);
     params.set('last_page', pagination.last_page);
     params.set('per_page', pagination.per_page);
@@ -227,21 +222,33 @@ export default function CustomerList() {
     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
   };
 
+  const handleSetPerPage = (value: number) => {
+    setPerPage(value);
+    console.log('value set per page', value)
 
-  const clearFilters = () => {
-    setFilterValues({
-      id: '',
-      first_name: '',
-      last_name: '',
-      phone: '',
-      email: '',
-      is_activated: '',
-      created_by: '',
-      updated_by: '',
-      created_at: '',
-      updated_at: '',
-    });
-    fetchCustomers(); // Refresh the customer list with unfiltered data
+
+    const params = new URLSearchParams();
+    params.set('current_page', pagination.current_page);
+    params.set('from', pagination.from);
+    params.set('last_page', pagination.last_page);
+    params.set('per_page', value);
+    params.set('prev_page_url', pagination.prev_page_url);
+    params.set('to', pagination.to);
+    params.set('total', pagination.total);
+
+    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+
+  const clearFilter = () => {
+    // Reset the form fields to their default values
+    reset();
+
+    // Clear the filter parameters
+    setFilterParams(new URLSearchParams());
+
+    // Fetch the customer list without any filters
+    fetchCustomers();
   };
 
   if (loading) return <div>Loading ...</div>;
@@ -268,123 +275,116 @@ export default function CustomerList() {
                 <DialogHeader>
                   <DialogTitle className="text-center mb-4">Advanced Search</DialogTitle>
                   <DialogDescription className="w-full text-center">
-                                  <div className="grid grid-cols-3 gap-4">
-                      <div className="">
-                        <span>ID </span>
-                        <Input
-                          name="id"
-                          value={filterValues.id}
-                          onChange={handleInputChange}
-                          placeholder="Filter id..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>First Name </span>
-                        <Input
-                          name="first_name"
-                          value={firstNameFilter}
-                          onChange={(e) => setFirstNameFilter(e.target.value)}
-                          placeholder="Filter First Name..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Last Name </span>
-                        <Input
-                          name="last_name"
-                          value={lastNameFilter}
-                          onChange={(e) => setLastNameFilter(e.target.value)}
-                          placeholder="Filter Last Name ..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Phone </span>
-                        <Input
-                          name="phone"
-                          value={filterValues.phone}
-                          onChange={handleInputChange}
-                          placeholder="Filter Phone..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Email </span>
-                        <Input
-                          name="email"
-                          value={filterValues.email}
-                          onChange={handleInputChange}
-                          placeholder="Filter Email..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Is Activated </span>
-                        <Input
-                          name="is_activated"
-                          value={filterValues.is_activated}
-                          onChange={handleInputChange}
-                          placeholder="Filter Is Activated... (true/false)"
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Created By </span>
-                        <Input
-                          name="created_by"
-                          value={filterValues.created_by}
-                          onChange={handleInputChange}
-                          placeholder="Filter created by..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Updated By </span>
-                        <Input
-                          name="updated_by"
-                          value={filterValues.updated_by}
-                          onChange={handleInputChange}
-                          placeholder="Filter updated by..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Created At </span>
-                        <Input
-                          type="datetime-local"
-                          name="created_at"
-                          value={filterValues.created_at}
-                          onChange={handleInputChange}
-                          placeholder="Filter created at..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
-                      <div className="">
-                        <span>Updated At </span>
-                        <Input
-                          type="datetime-local"
-                          name="updated_at"
-                          value={filterValues.updated_at}
-                          onChange={handleInputChange}
-                          placeholder="Filter updated at..."
-                          className="max-w-sm text-xs"
-                        />
-                      </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <form onSubmit={handleSubmit(onSubmit)}>
+                        <div>
+                          <label htmlFor="first name">First Name</label>
+                          <Input
+                            id="first_name"
+                            type="text"
+                            {...register('first_name')}
+                            placeholder="Enter your first name"
+                          />
+                          {errors.first_name && <span>{errors.first_name.message}</span>}
+                        </div>
+                        <div>
+                          <label htmlFor="last name">Last Name</label>
+                          <Input
+                            id="last_name"
+                            type="text"
+                            {...register('last_name')}
+                            placeholder="Enter your last name"
+                          />
+                          {errors.last_name && <span>{errors.last_name.message}</span>}
+                        </div>
+                        <div>
+                          <label htmlFor="phone">Phone</label>
+                          <Input
+                            id="phone"
+                            type="text"
+                            {...register('phone')}
+                            placeholder="Enter your phone"
+                          />
+                          {errors.phone && <span>{errors.phone.message}</span>}
+                        </div>    
+                        <div>
+                          <label htmlFor="email">Email</label>
+                          <Input
+                            id="email"
+                            type="text"
+                            {...register('email')}
+                            placeholder="Enter your email"
+                          />
+                          {errors.email && <span>{errors.email.message}</span>}
+                        </div>    
+                        <div>
+                          <label htmlFor="created_by">Created By</label>
+                          <Input
+                            id="created_by"
+                            type="text"
+                            {...register('created_by')}
+                            placeholder="Enter your created_by"
+                          />
+                          {errors.created_by && <span>{errors.created_by.message}</span>}
+                        </div>    
+                        <div>
+                          <label htmlFor="updated_by">Updated By</label>
+                          <Input
+                            id="updated_by"
+                            type="text"
+                            {...register('updated_by')}
+                            placeholder="Enter your updated_by"
+                          />
+                          {errors.updated_by && <span>{errors.updated_by.message}</span>}
+                        </div>    
+                        <div>
+                          <label htmlFor="is_activated">Is Activated</label>
+                          <Input
+                            id="is_activated"
+                            type="text"
+                            {...register('is_activated')}
+                            placeholder="Enter your is_activated"
+                          />
+                          {errors.is_activated && <span>{errors.is_activated.message}</span>}
+                        </div> 
+                        <div>
+                          <label htmlFor="created_at">Created At</label>
+                          <Input
+                            id="created_at"
+                            type="date"
+                            {...register('created_at')}
+                            placeholder="Enter your created_at"
+                          />
+                          {errors.created_at && <span>{errors.created_at.message}</span>}
+                        </div>    
+                        <div>
+                          <label htmlFor="updated_at">Updated At</label>
+                          <Input
+                            id="updated_at"
+                            type="text"
+                            {...register('updated_at')}
+                            placeholder="Enter your updated_at"
+                          />
+                          {errors.updated_at && <span>{errors.updated_at.message}</span>}
+                        </div>     
+
+                        <div className="flex">
+                          <button className="bg-blue-800 text-white radius-sm m-1 p-1" type="submit">Submit</button>
+                          <button className="bg-red-800 text-white radius-sm m-1 p-1" onClick={clearFilter}>Clear Filter</button>
+
+                        </div>
+
+                      </form>
                     </div>
-                    <button
-                      onClick={applyFilters}
-                      className="bg-blue-800 text-white radius-sm m-1 p-1"
-                    >
-                      Filter
-                    </button>
-                    <button className="bg-red-800 text-white radius-sm m-1 p-1" onClick={clearFilters}>Clear Filter</button>
+
                   </DialogDescription>
                 </DialogHeader>
               </DialogContent>
             </Dialog>
           </div>
         </div>
+
+
         <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-x-12 lg:space-y-0'>
           <Table className="border border-gray-300">
             <TableHeader className="bg-blue-800">
@@ -451,16 +451,16 @@ export default function CustomerList() {
 
           {/* Bagian Kanan: Tombol Navigasi */}
           <div className="flex space-x-2">
-            <button onClick={() => setPage(1)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => handleSetPage(1)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               First
             </button>
-            <button onClick={() => setPage(pagination.current_page - 1)} disabled={pagination.current_page === 1} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => handleSetPage(pagination.current_page - 1)} disabled={pagination.current_page === 1} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               Previous
             </button>
-            <button onClick={() => setPage(pagination.current_page + 1)} disabled={pagination.current_page === pagination.last_page} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => handleSetPage(pagination.current_page + 1)} disabled={pagination.current_page === pagination.last_page} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               Next
             </button>
-            <button onClick={() => setPage(pagination.last_page)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => handleSetPage(pagination.last_page)} className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300">
               Last
             </button>
           </div>

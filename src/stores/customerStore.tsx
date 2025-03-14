@@ -40,7 +40,7 @@ interface CustomerStore {
   handleEdit: (customerId: string) => void;
   setSelectedCustomer: (customer: Customer | null) => void;
   fetchCustomerById: (customer: Customer) => void;
-  fetchAdvanceSearch: (firstNameFilter: string, lastNameFilter : string) => void;
+  // fetchAdvanceSearch: (firstNameFilter: string, lastNameFilter : string) => void;
   setFilter: (filter: Partial<CustomerStore['filter']>) => void;
   clearFilter: () => void;
   filter: {
@@ -115,6 +115,7 @@ const customerStore = create<CustomerStore>((set) => ({
   },
   
   setPage: (current_page: number) => {
+    alert('isi current_page',current_page);
     set((state) => {
       if (current_page < 1 || current_page > state.pagination.last_page) return state; // Validasi halaman
       return {
@@ -152,28 +153,28 @@ const customerStore = create<CustomerStore>((set) => ({
   }),
 
 
-  fetchAdvanceSearch: async (firstNameFilter, lastNameFilter) => {
-    try {
+  // fetchAdvanceSearch: async (firstNameFilter, lastNameFilter) => {
+  //   try {
 
-      const response = await axios.post(`http://127.0.0.1:8000/api/customer-filter`, {
-        first_name: firstNameFilter,
-        last_name: lastNameFilter,
-      }, {
-        headers: {
-          "Content-Type": "application/json",
-        }
-      });
+  //     const response = await axios.post(`http://127.0.0.1:8000/api/customer-filter`, {
+  //       first_name: firstNameFilter,
+  //       last_name: lastNameFilter,
+  //     }, {
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       }
+  //     });
 
-      // const response = await axios.get(`http://localhost:8000/api/customers?`);
+  //     // const response = await axios.get(`http://localhost:8000/api/customers?`);
       
 
-      set({ customers: response.data.data.data, loading: false });
-      console.log(response.data.data.data);
-      alert('search');
-    } catch (error) {
-      set({ error: error.message });
-    }
-  },
+  //     set({ customers: response.data.data.data, loading: false });
+  //     console.log(response.data.data.data);
+  //     alert('search');
+  //   } catch (error) {
+  //     set({ error: error.message });
+  //   }
+  // },
 
 
 
