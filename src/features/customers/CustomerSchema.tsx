@@ -21,9 +21,8 @@ const customerSchema = z.object({
 
   updated_by: z.string().optional(),
 
-  is_activated: z.boolean().optional() // Mengizinkan field ini untuk tidak ada
-  .nullable() // Mengizinkan field ini untuk bernilai null
-  .or(z.literal('')), // Mengizinkan field ini untuk bernilai string kosong
+  is_activated: z.string().optional() // Mengizinkan field ini untuk tidak ada
+  .nullable(), // Mengizinkan field ini untuk bernilai string kosong
 
   created_at: z.string()
     .optional()
@@ -40,4 +39,5 @@ const customerSchema = z.object({
 // Tipe data untuk form
 type CustomerFormData = z.infer<typeof customerSchema>;
 
-export { customerSchema, CustomerFormData };
+export { CustomerFormData, customerSchema };
+

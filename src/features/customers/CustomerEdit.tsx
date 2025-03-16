@@ -1,27 +1,23 @@
 // CustomerEdit.js
 import { Header } from '@/components/layout/header';
-import axios from 'axios';
 import { Main } from '@/components/layout/main';
 import { Input } from "@/components/ui/input";
-import { useEffect, useState } from 'react';
-import { useParams } from '@tanstack/react-router';
 import useCustomerFormStore from '@/stores/customerFormStore';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate, useParams } from '@tanstack/react-router';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { CustomerFormData, customerSchema } from './CustomerSchema';
 
 import { z } from 'zod';
 
 const CustomerEdit = () => {
+  const navigate = useNavigate({ from: '/customers/edit' })
 
-  // Define Zod schema for validation
-  const customerSchema = z.object({
-    first_name: z.string().min(1, "First name is required"),
-    last_name: z.string().min(1, "Last name is required"),
-    email: z.string().email("Invalid email format").min(1, "Email is required"),
-    phone: z.string()
-          .min(1, "Phone number is required")
-          .regex(/^0[0-9]*$/, "Nomor Hanphone hanya boleh angka dan di mulai dari angka 0"),
-    created_at: z.string().optional(),
-
-  });
+   const { register, watch,  formState: { errors }, handleSubmit } = useForm<CustomerFormData>({
+     resolver: zodResolver(customerSchema),
+   });
   
   const { id } = useParams({strict:false}); // Get the customer ID from the URL
   const [formErrors, setFormErrors] = useState({});
@@ -48,6 +44,13 @@ const CustomerEdit = () => {
   }
   
   const handleUpdate = async () => {
+
+    console.log(customer.created_atis_activated);
+    if (customer.is_activated) {
+      customer.is_activated == 0 ;
+    }
+
+
     try {
       customerSchema.parse(customer);
       await axios.put(`http://localhost:8000/api/customers/update/${customer.id}`, customer);
@@ -130,6 +133,32 @@ const CustomerEdit = () => {
               placeholder="Created At"
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+
+
+          <div>
+            <label>Is Activated</label>
+            <div>
+              <label>
+                <input
+                  type="radio"
+                  value="1"
+                  {...register('is_activated')}
+                  checked={customer.created_at == '1' ? 'true':'false'}
+                  
+                />
+                Yes
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  value="0"
+                  {...register('is_activated')}
+                  checked={customer.created_at == '0' ? 'true':'false'}
+                />
+                No
+              </label>
+            </div>
+          </div>
 
           <button 
             type="submit" 

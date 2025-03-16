@@ -1,12 +1,10 @@
 import { Header } from '@/components/layout/header';
-import axios from 'axios';
 import { Main } from '@/components/layout/main';
 import { Input } from "@/components/ui/input";
-import { useState } from 'react';
-import { z } from 'zod';
-import { customerSchema, CustomerFormData } from './CustomerSchema';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import axios from 'axios';
+import { useForm } from 'react-hook-form';
+import { CustomerFormData, customerSchema } from './CustomerSchema';
 
 const CustomerCreate = () => {
 
